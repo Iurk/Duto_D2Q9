@@ -9,12 +9,21 @@ from matplotlib import cm
 import matplotlib.pyplot as plt
 import imageio
 
-def grafico(u, step, pasta_imagens):
+def image(u, step, pasta_imagens):
     file = 'vel.' + str(step) + '.png'
     path = pasta_imagens + '/%s' % file
     plt.clf()
     plt.imshow(u, cmap=cm.RdBu, interpolation='nearest')
     plt.colorbar()
+    plt.savefig(path, dpi=250)
+    
+def grafico(x, y, step, pasta_imagens):
+    file = 'vel.' + str(step) + '.png'
+    path = pasta_imagens + '/%s' % file
+    plt.clf()
+    plt.plot(x, y, 'b')
+    plt.xlabel('Velocidade')
+    plt.ylabel('Posição em y')
     plt.savefig(path, dpi=250)
     
 def stream(x, y, u, v, u_mod, step, pasta_imagens):
