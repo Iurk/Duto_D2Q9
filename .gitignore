@@ -5,11 +5,12 @@ bin/Velocity/
 obj/
 __pycache__/
 
+# Excel files
 *.xlsx 
 
 # Exe
 lbm
 
 # Output Files
-*.gif
-*.mp4
+bin/*.gif
+bin/*.mp4
