@@ -1,0 +1,15 @@
+# Folders
+bin/Mesh/
+bin/Results/
+bin/Velocity/
+obj/
+__pycache__/
+
+*.xlsx 
+
+# Exe
+lbm
+
+# Output Files
+*.gif
+*.mp4

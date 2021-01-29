@@ -1,0 +1,31 @@
+domain:
+  Nx: 32
+  Ny: 32
+
+simulation:
+  lattice: D2Q9
+  NSTEPS: 5
+  NSAVE: 400
+  NMSG: 1
+  computeFlowProperties: true
+  quiet: true
+  meshprint: false
+  erro_max: 1e-3
+
+gpu:
+  nThreads: 32
+
+input:
+  Re: 500
+  u_max: 0.04
+  rho0: 1.0
+
+air:
+  rho: 1.21
+  mi: 1.81e-5
+  nu: 1.5e-5
+
+water:
+  rho: 998
+  mi: 1.01e-3
+  nu: 1.01e-6
