@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <iomanip>
 
 #include "seconds.h"
 #include "LBM.h"
@@ -45,22 +46,28 @@ int main(int argc, char const *argv[]){
 	printf("\n");
 
 	// Declaration and Allocation in device Memory
-	double *f1_gpu, *f2_gpu, *f1neq_gpu;
-	double *rho_gpu, *ux_gpu, *uy_gpu;
-	double *prop_gpu;
+	double *f1_gpu, *f2_gpu,  *feq_gpu, *fneq_gpu, *S_gpu;
+	double *rho_gpu, *ux_gpu, *uy_gpu, *ux_old_gpu;
+	double *prop_gpu, *conv_gpu;
 
 	checkCudaErrors(cudaMalloc((void**)&f1_gpu, mem_size_ndir));
 	checkCudaErrors(cudaMalloc((void**)&f2_gpu, mem_size_ndir));
-	checkCudaErrors(cudaMalloc((void**)&f1neq_gpu, mem_size_ndir));
+	checkCudaErrors(cudaMalloc((void**)&feq_gpu, mem_size_ndir));
+	checkCudaErrors(cudaMalloc((void**)&fneq_gpu, mem_size_ndir));
+	checkCudaErrors(cudaMalloc((void**)&S_gpu, mem_size_ndir));
 	checkCudaErrors(cudaMalloc((void**)&rho_gpu, mem_size_scalar));
 	checkCudaErrors(cudaMalloc((void**)&ux_gpu, mem_size_scalar));
 	checkCudaErrors(cudaMalloc((void**)&uy_gpu, mem_size_scalar));
+	checkCudaErrors(cudaMalloc((void**)&ux_old_gpu, mem_size_scalar));
 
+	const size_t mem_size_conv = 2*1*Ny/nThreads*sizeof(double);
 	const size_t mem_size_props = 3*Nx/nThreads*Ny*sizeof(double);
 	checkCudaErrors(cudaMalloc((void**)&prop_gpu, mem_size_props));
+	checkCudaErrors(cudaMalloc((void**)&conv_gpu, mem_size_conv));
 
-	double *scalar_host;
+	double *scalar_host, *conv_host;
 	scalar_host = create_pinned_double();
+	conv_host = create_pinned_double();
 	if(scalar_host == NULL){
 		fprintf(stderr, "Error: unable to allocate required memory (%.1f MiB).\n", mem_size_scalar/bytesPerMiB);
 		exit(-1);
@@ -96,9 +103,10 @@ int main(int argc, char const *argv[]){
 	initialization(rho_gpu, rho0);
 	initialization(ux_gpu, u_max);
 	initialization(uy_gpu, 0.0);
+	initialization(ux_old_gpu, 0.0);
 
 	init_equilibrium(f1_gpu, rho_gpu, ux_gpu, uy_gpu);
-	checkCudaErrors(cudaMemset(f1neq_gpu, 0, mem_size_ndir));
+	checkCudaErrors(cudaMemset(fneq_gpu, 0, mem_size_ndir));
 
 	save_scalar("rho",rho_gpu, scalar_host, 0);
 	save_scalar("ux", ux_gpu, scalar_host, 0);
@@ -108,14 +116,17 @@ int main(int argc, char const *argv[]){
 	double begin = seconds();
 	checkCudaErrors(cudaEventRecord(start, 0));
 
-	std::vector<double> error_prop;
+	double conv_error;
+	unsigned int end_step;
 
 	// Main Loop
+	printf("Starting main loop...\n");
+	std::cout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(10) << "L2" << std::setw(20) << "Convergence" << std::endl;
 	for(unsigned int n = 0; n < NSTEPS; ++n){
 		bool save = (n+1)%NSAVE == 0;
 		bool msg = (n+1)%NMSG == 0;
 		bool need_scalars = save || (msg && computeFlowProperties);
-
+/*
 		double *ux_test;
 
 		ux_test = (double*)malloc(mem_size_scalar);
@@ -128,8 +139,8 @@ int main(int argc, char const *argv[]){
 			}
 			std::cout << std::endl;
 		}
-
-		stream_collide_save(f1_gpu, f2_gpu, f1neq_gpu, rho_gpu, ux_gpu, uy_gpu, need_scalars);
+*/
+		stream_collide_save(f1_gpu, f2_gpu, feq_gpu, fneq_gpu, S_gpu, rho_gpu, ux_gpu, uy_gpu, need_scalars);
 
 		if(save){
 			save_scalar("rho",rho_gpu, scalar_host, n+1);
@@ -141,14 +152,20 @@ int main(int argc, char const *argv[]){
 		f1_gpu = f2_gpu;
 		f2_gpu = temp;
 
-		error_prop = report_flow_properties(n+1, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg, computeFlowProperties);
+		conv_error = compute_convergence(ux_gpu, ux_old_gpu, conv_host, conv_gpu);
+		report_flow_properties(n+1, conv_error, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg, computeFlowProperties);
 
-		if(error_prop[1] < erro_max){
-			printf("%u, %g, %g\n", n+1, error_prop[0], error_prop[1]);
+		end_step = n+1;
+		if(conv_error < erro_max){
 			break;
 		}
+
+		checkCudaErrors(cudaMemcpy(ux_old_gpu, ux_gpu, mem_size_scalar, cudaMemcpyDeviceToDevice));
 	}
 	
+	bool msg = 0 == 0;
+	report_flow_properties(end_step, conv_error, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg, computeFlowProperties);
+
 	// Measuring time
 	checkCudaErrors(cudaEventRecord(stop, 0));
 	checkCudaErrors(cudaEventSynchronize(stop));
@@ -189,10 +206,13 @@ int main(int argc, char const *argv[]){
 	// LBM variables
 	checkCudaErrors(cudaFree(f1_gpu));
 	checkCudaErrors(cudaFree(f2_gpu));
-	checkCudaErrors(cudaFree(f1neq_gpu));
+	checkCudaErrors(cudaFree(feq_gpu));
+	checkCudaErrors(cudaFree(fneq_gpu));
+	checkCudaErrors(cudaFree(S_gpu));
 	checkCudaErrors(cudaFree(rho_gpu));
 	checkCudaErrors(cudaFree(ux_gpu));
 	checkCudaErrors(cudaFree(uy_gpu));
+	checkCudaErrors(cudaFree(ux_old_gpu));
 	checkCudaErrors(cudaFree(prop_gpu));
 	checkCudaErrors(cudaFree(ex_gpu));
 	checkCudaErrors(cudaFree(ey_gpu));
