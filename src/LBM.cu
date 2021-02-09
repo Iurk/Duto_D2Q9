@@ -65,6 +65,22 @@ __device__ void gpu_equilibrium(unsigned int x, unsigned int y, double rho, doub
 	}
 }
 
+__device__ void gpu_non_equilibrium(unsigned int x, unsigned int y, double tauxx, double tauxy, double tauyy, double *fneq){
+
+	double B = 1.0/(2.0*pow(cs_d, 4));
+
+	double W[] = {w0_d, ws_d, ws_d, ws_d, ws_d, wd_d, wd_d, wd_d, wd_d};
+
+	for(int n = 0; n < q; ++n){
+
+		double xx = tauxx*(pow(ex_d[n], 2) - pow(cs_d, 2));
+		double xy = tauxy*ex_d[n]*ey_d[n];
+		double yy = tauyy*(pow(ey_d[n], 2) - pow(cs_d, 2));
+
+		fneq[gpu_fieldn_index(x, y, n)] = W[n]*B*(xx + 2*xy + yy);
+	}
+}
+
 __device__ void gpu_source(unsigned int x, unsigned int y, double gx, double gy, double rho, double ux, double uy, double *S){
 
 	double A = 1.0/pow(cs_d, 2);
@@ -171,11 +187,29 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 	gpu_equilibrium(x, y, rho, ux, uy, feq);
 	gpu_source(x, y, gx, gy, rho, ux, uy, S);
 
+	// Approximation of fneq
 	for(int n = 0; n < q; ++n){
 		x_att = (x - ex_d[n] + Nx_d)%Nx_d;
 		y_att = (y - ey_d[n] + Ny_d)%Ny_d;
 
-		f2[gpu_fieldn_index(x, y, n)] = (1 - omega)*f1[gpu_fieldn_index(x_att, y_att, n)] + omega*feq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
+		fneq[gpu_fieldn_index(x, y, n)] = f1[gpu_fieldn_index(x_att, y_att, n)] - feq[gpu_fieldn_index(x, y, n)];
+	}
+
+	// Calculating the Viscous stress tensor
+	double tauxx = 0, tauxy = 0, tauyy = 0;
+	for(int n = 0; n < q; ++n){
+		tauxx += fneq[gpu_fieldn_index(x, y, n)]*ex_d[n]*ex_d[n];
+		tauxy += fneq[gpu_fieldn_index(x, y, n)]*ex_d[n]*ey_d[n];
+		tauyy += fneq[gpu_fieldn_index(x, y, n)]*ey_d[n]*ey_d[n];
+	}
+
+	gpu_non_equilibrium(x, y, tauxx, tauxy, tauyy, fneq);
+
+	for(int n = 0; n < q; ++n){
+		x_att = (x - ex_d[n] + Nx_d)%Nx_d;
+		y_att = (y - ey_d[n] + Ny_d)%Ny_d;
+
+		f2[gpu_fieldn_index(x, y, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
 	}
 	
 
