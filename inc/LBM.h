@@ -5,9 +5,10 @@
 
 void initialization(double*, double);
 void init_equilibrium(double*, double*, double*, double*);
-void stream_collide_save(double*, double*, double*, double*, double*, double*, bool);
+void stream_collide_save(double*, double*, double*, double*, double*, double*, double*, double*, bool);
+double compute_convergence(double*, double*, double*, double*);
 std::vector<double> compute_flow_properties(unsigned int, double*, double*, double*, std::vector<double>, double*, double*);
-std::vector<double> report_flow_properties(unsigned int, double*, double*, double*, double*, double*, bool, bool);
+void report_flow_properties(unsigned int, double, double*, double*, double*, double*, double*, bool, bool);
 void save_scalar(const std::string , double*, double*, unsigned int);
 void wrapper_input(unsigned int*, unsigned int*, double*, double*, double*, const double*, const double*);
 void wrapper_lattice(unsigned int*, double*, double*, double*, double*);
