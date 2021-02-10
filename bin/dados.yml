@@ -4,9 +4,9 @@ domain:
 
 simulation:
   lattice: D2Q9
-  NSTEPS: 100000
-  NSAVE: 400
-  NMSG: 100
+  NSTEPS: 100
+  NSAVE: 500
+  NMSG: 10000
   computeFlowProperties: true
   quiet: true
   meshprint: false
