@@ -14,3 +14,4 @@ lbm
 # Output Files
 bin/*.gif
 bin/*.mp4
+bin/*.dat
