@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iomanip>
 #include <string>
+#include <fstream>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -352,20 +353,22 @@ __global__ void gpu_compute_flow_properties(unsigned int t, double *r, double *u
 	}
 }
 
-__host__ void report_flow_properties(unsigned int t, double conv, double *rho, double *ux, double *uy,
-									 double *prop_gpu, double *prop_host, bool msg, bool computeFlowProperties){
+__host__ std::vector<double> report_flow_properties(unsigned int t, double conv, double *rho, double *ux, double *uy, double *prop_gpu, double *prop_host, bool msg, bool computeFlowProperties){
+
+	std::vector<double> prop;
 
 	if(msg){
 		if(computeFlowProperties){
-			std::vector<double> prop;
 			prop = compute_flow_properties(t, rho, ux, uy, prop, prop_gpu, prop_host);
-			std::cout << std::setw(10) << t << std::setw(13) << prop[0] << std::setw(10) << prop[1] << std::setw(20) << conv << std::endl;
+			std::cout << std::setw(10) << t << std::setw(13) << prop[0] << std::setw(15) << prop[1] << std::setw(20) << conv << std::endl;
 		}
 
 		if(!quiet){
 			printf("Completed timestep %d\n", t);
 		}
 	}
+
+	return prop;
 }
 
 __host__ void save_scalar(const std::string name, double *scalar_gpu, double *scalar_host, unsigned int n){
@@ -414,6 +417,23 @@ __host__ void save_scalar(const std::string name, double *scalar_gpu, double *sc
 		}
 	}
 	fclose(fout);
+}
+
+__host__ void save_terminal(int time, double conv, std::vector<double> prop){
+
+	std::ostringstream filename;
+
+	std::string ext = ".dat";
+
+	filename << bin_folder << "error_data" << ext;
+	const char* filename_c = strdup(filename.str().c_str());
+
+	std::ofstream fout;
+	fout.open(filename.str());
+
+	fout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(15) << "L2" << std::setw(23) << "Convergence" << std::endl;
+	fout << std::setw(10) << time << std::setw(13) << prop[0] << std::setw(15) << prop[1] << std::setw(20) << conv << std::endl;
+	fout.close();
 }
 
 void wrapper_input(unsigned int *nx, unsigned int *ny, double *rho, double *u, double *nu, const double *tau, const double *mi_ar){
