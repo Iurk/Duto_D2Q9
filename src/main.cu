@@ -118,10 +118,11 @@ int main(int argc, char const *argv[]){
 
 	double conv_error;
 	unsigned int end_step;
+	std::vector<double> prop;
 
 	// Main Loop
 	printf("Starting main loop...\n");
-	std::cout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(10) << "L2" << std::setw(20) << "Convergence" << std::endl;
+	std::cout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(15) << "L2" << std::setw(23) << "Convergence" << std::endl;
 	for(unsigned int n = 0; n < NSTEPS; ++n){
 		bool save = (n+1)%NSAVE == 0;
 		bool msg = (n+1)%NMSG == 0;
@@ -153,7 +154,7 @@ int main(int argc, char const *argv[]){
 		f2_gpu = temp;
 
 		conv_error = compute_convergence(ux_gpu, ux_old_gpu, conv_host, conv_gpu);
-		report_flow_properties(n+1, conv_error, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg, computeFlowProperties);
+		prop = report_flow_properties(n+1, conv_error, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg, computeFlowProperties);
 
 		end_step = n+1;
 		if(conv_error < erro_max){
@@ -164,7 +165,8 @@ int main(int argc, char const *argv[]){
 	}
 	
 	bool msg = 0 == 0;
-	report_flow_properties(end_step, conv_error, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg, computeFlowProperties);
+	prop = report_flow_properties(end_step, conv_error, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg, computeFlowProperties);
+	save_terminal(end_step, conv_error, prop);
 
 	// Measuring time
 	checkCudaErrors(cudaEventRecord(stop, 0));
