@@ -206,10 +206,8 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 
 	gpu_non_equilibrium(x, y, tauxx, tauxy, tauyy, fneq);
 
+	// Collision step
 	for(int n = 0; n < q; ++n){
-		x_att = (x - ex_d[n] + Nx_d)%Nx_d;
-		y_att = (y - ey_d[n] + Ny_d)%Ny_d;
-
 		f2[gpu_fieldn_index(x, y, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
 	}
 	
@@ -219,6 +217,18 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 	if(node_solid){
 		gpu_bounce_back(x, y, f2);
 	}
+}
+
+__host__ double report_convergence(unsigned int t, double *u, double *u_old, double *conv_host, double *conv_gpu, bool msg){
+
+	double conv;
+	conv = compute_convergence(u, u_old, conv_host, conv_gpu);
+	
+	if(msg){
+		std::cout << std::setw(10) << t << std::setw(20) << conv << std::endl;
+	}
+
+	return conv;
 }
 
 __host__ double compute_convergence(double *u, double *u_old, double *conv_host, double *conv_gpu){
@@ -244,7 +254,6 @@ __host__ double compute_convergence(double *u, double *u_old, double *conv_host,
 
 	convergence = sqrt(sumuxe2/sumuxa2);
 	return convergence;
-
 }
 
 __global__ void gpu_compute_convergence(double *u, double *u_old, double *conv){
@@ -278,6 +287,18 @@ __global__ void gpu_compute_convergence(double *u, double *u_old, double *conv){
 			conv[idx+1] += uxa2[i];
 		}
 	}
+}
+
+__host__ std::vector<double> report_flow_properties(unsigned int t, double conv, double *rho, double *ux, double *uy, double *prop_gpu, double *prop_host, bool msg){
+
+	std::vector<double> prop;
+
+	if(msg){
+		prop = compute_flow_properties(t, rho, ux, uy, prop, prop_gpu, prop_host);
+		std::cout << std::setw(10) << t << std::setw(13) << prop[0] << std::setw(15) << prop[1] << std::setw(20) << conv << std::endl;
+	}
+
+	return prop;
 }
 
 __host__ std::vector<double> compute_flow_properties(unsigned int t, double *r, double *u, double *v, std::vector<double> prop, double *prop_gpu, double *prop_host){
@@ -353,24 +374,6 @@ __global__ void gpu_compute_flow_properties(unsigned int t, double *r, double *u
 	}
 }
 
-__host__ std::vector<double> report_flow_properties(unsigned int t, double conv, double *rho, double *ux, double *uy, double *prop_gpu, double *prop_host, bool msg, bool computeFlowProperties){
-
-	std::vector<double> prop;
-
-	if(msg){
-		if(computeFlowProperties){
-			prop = compute_flow_properties(t, rho, ux, uy, prop, prop_gpu, prop_host);
-			std::cout << std::setw(10) << t << std::setw(13) << prop[0] << std::setw(15) << prop[1] << std::setw(20) << conv << std::endl;
-		}
-
-		if(!quiet){
-			printf("Completed timestep %d\n", t);
-		}
-	}
-
-	return prop;
-}
-
 __host__ void save_scalar(const std::string name, double *scalar_gpu, double *scalar_host, unsigned int n){
 
 	std::ostringstream path, filename;
@@ -410,11 +413,6 @@ __host__ void save_scalar(const std::string name, double *scalar_gpu, double *sc
 	if(ferror(fout)){
 		fprintf(stderr, "Error saving to %s\n", filename_c);
 		perror("");
-	}
-	else{
-		if(!quiet){
-			printf("Saved to %s\n", filename_c);
-		}
 	}
 	
 	fclose(fout);
