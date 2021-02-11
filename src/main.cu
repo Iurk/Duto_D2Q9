@@ -165,6 +165,7 @@ int main(int argc, char const *argv[]){
 	}
 	
 	bool msg = 0 == 0;
+	std::cout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(15) << "L2" << std::setw(23) << "Convergence" << std::endl;
 	prop = report_flow_properties(end_step, conv_error, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg, computeFlowProperties);
 	save_terminal(end_step, conv_error, prop);
 
