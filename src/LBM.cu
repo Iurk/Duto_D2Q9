@@ -416,6 +416,7 @@ __host__ void save_scalar(const std::string name, double *scalar_gpu, double *sc
 			printf("Saved to %s\n", filename_c);
 		}
 	}
+	
 	fclose(fout);
 }
 
