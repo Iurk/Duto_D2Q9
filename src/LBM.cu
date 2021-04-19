@@ -1,18 +1,12 @@
 #include <iostream>
-#include <sstream>
 #include <iomanip>
-#include <string>
-#include <fstream>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
 
 #include <cuda.h>
-#include <dirent.h>
 #include <errno.h>
-#include <sys/stat.h>
 
-#include "paths.h"
 #include "LBM.h"
 #include "dados.h"
 
@@ -24,8 +18,7 @@ __constant__ double rho0_d, u_max_d, nu_d, tau_d, mi_ar_d;
 
 //Lattice Data
 __constant__ double cs_d, w0_d, ws_d, wd_d;
-__device__ int *ex_d;
-__device__ int *ey_d;
+__device__ int *ex_d, *ey_d;
 
 // Mesh data
 __device__ bool *solid_d;
@@ -48,19 +41,25 @@ __global__ void gpu_initialization(double*, double);
 // Equilibrium
 __device__ void gpu_equilibrium(unsigned int x, unsigned int y, double rho, double ux, double uy, double *feq){
 
-	double A = 1.0/(pow(cs_d, 2));
-	double B = 1.0/(2.0*pow(cs_d, 4));
-	double C = 1.0/(2.0*pow(cs_d, 2));
+	double cs2 = cs_d*cs_d;
+	double cs4 = cs2*cs2;
+	double cs6 = cs2*cs4;
+
+	double A = 1.0/(cs2);
+	double B = 1.0/(2.0*cs4);
+	double C = 1.0/(2.0*cs6);
 
 	double W[] = {w0_d, ws_d, ws_d, ws_d, ws_d, wd_d, wd_d, wd_d, wd_d};
 
 	for(int n = 0; n < q; ++n){
-		double u_mod = pow(ux, 2) + pow(uy, 2);
-		double udotei = ux*ex_d[n] + uy*ey_d[n];
 
-		double order_1 = A*udotei;
+		double ux2 = ux*ux;
+		double uy2 = uy*uy;
+		double ex2 = ex_d[n]*ex_d[n];
+		double ey2 = ey_d[n]*ey_d[n];
 
-		double order_2 = B*pow(udotei, 2) - C*u_mod;
+		double order_1 = A*(ux*ex_d[n] + uy*ey_d[n]);
+		double order_2 = B*(ux2*(ex2 - cs2) + 2*ux*uy*ex_d[n]*ey_d[n] + uy2*(ey2 - cs2));
 
 		feq[gpu_fieldn_index(x, y, n)] = W[n]*rho*(1 + order_1 + order_2);
 	}
@@ -68,15 +67,20 @@ __device__ void gpu_equilibrium(unsigned int x, unsigned int y, double rho, doub
 
 __device__ void gpu_non_equilibrium(unsigned int x, unsigned int y, double tauxx, double tauxy, double tauyy, double *fneq){
 
-	double B = 1.0/(2.0*pow(cs_d, 4));
+	double cs2 = cs_d*cs_d;
+	double cs4 = cs2*cs2;
+
+	double B = 1.0/(2.0*cs4);
 
 	double W[] = {w0_d, ws_d, ws_d, ws_d, ws_d, wd_d, wd_d, wd_d, wd_d};
 
 	for(int n = 0; n < q; ++n){
+		double ex2 = ex_d[n]*ex_d[n];
+		double ey2 = ey_d[n]*ey_d[n];
 
-		double xx = tauxx*(pow(ex_d[n], 2) - pow(cs_d, 2));
+		double xx = tauxx*(ex2 - cs2);
 		double xy = tauxy*ex_d[n]*ey_d[n];
-		double yy = tauyy*(pow(ey_d[n], 2) - pow(cs_d, 2));
+		double yy = tauyy*(ey2 - cs2);
 
 		fneq[gpu_fieldn_index(x, y, n)] = W[n]*B*(xx + 2*xy + yy);
 	}
@@ -84,7 +88,9 @@ __device__ void gpu_non_equilibrium(unsigned int x, unsigned int y, double tauxx
 
 __device__ void gpu_source(unsigned int x, unsigned int y, double gx, double gy, double rho, double ux, double uy, double *S){
 
-	double A = 1.0/pow(cs_d, 2);
+	double cs2 = cs_d*cs_d;
+
+	double A = 1.0/cs2;
 	double W[] = {w0_d, ws_d, ws_d, ws_d, ws_d, wd_d, wd_d, wd_d, wd_d};
 
 	for(int n = 0; n < q; ++n){
@@ -101,9 +107,9 @@ __device__ void gpu_source(unsigned int x, unsigned int y, double gx, double gy,
 // Poiseulle Flow
 __device__ void poiseulle_eval(unsigned int t, unsigned int x, unsigned int y, double *u){
 
-	double gradP = -8*u_max_d*mi_ar_d/(pow(Ny_d, 2) - 2*Ny_d);
+	double gradP = 8*u_max_d*mi_ar_d/(Ny_d*Ny_d - 2*Ny_d);
 
-	double ux = (-1/(2*mi_ar_d))*(gradP)*((Ny_d - 1)*y - pow(y, 2));
+	double ux = (1/(2*mi_ar_d))*(gradP)*((Ny_d - 1)*y - y*y);
 
 	*u = ux;
 }
@@ -372,67 +378,6 @@ __global__ void gpu_compute_flow_properties(unsigned int t, double *r, double *u
             prop_gpu[idx+2] += uxa2[i];
 		}
 	}
-}
-
-__host__ void save_scalar(const std::string name, double *scalar_gpu, double *scalar_host, unsigned int n){
-
-	std::ostringstream path, filename;
-
-	std::string ext = ".dat";
-
-	int ndigits = floor(log10((double)NSTEPS) + 1.0);
-
-	const char* path_results_c = strdup(folder.c_str());
-
-	DIR *dir_results = opendir(path_results_c);
-	if(ENOENT == errno){
-		mkdir(path_results_c, ACCESSPERMS);
-	}
-
-	closedir(dir_results);
-
-	path << folder << name << "/";
-	const char* path_c = strdup(path.str().c_str());
-
-	DIR *dir = opendir(path_c);
-	if(ENOENT == errno){
-		mkdir(path_c, ACCESSPERMS);
-	}
-
-	closedir(dir);
-
-	filename << path.str() << name << std::setfill('0') << std::setw(ndigits) << n << ext;
-	const char* filename_c = strdup(filename.str().c_str());
-
-	checkCudaErrors(cudaMemcpy(scalar_host, scalar_gpu, mem_size_scalar, cudaMemcpyDeviceToHost));
-
-	FILE* fout = fopen(filename_c, "wb+");
-
-	fwrite(scalar_host, 1, mem_size_scalar, fout);
-
-	if(ferror(fout)){
-		fprintf(stderr, "Error saving to %s\n", filename_c);
-		perror("");
-	}
-	
-	fclose(fout);
-}
-
-__host__ void save_terminal(int time, double conv, std::vector<double> prop){
-
-	std::ostringstream filename;
-
-	std::string ext = ".dat";
-
-	filename << bin_folder << "error_data" << ext;
-	const char* filename_c = strdup(filename.str().c_str());
-
-	std::ofstream fout;
-	fout.open(filename.str());
-
-	fout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(15) << "L2" << std::setw(23) << "Convergence" << std::endl;
-	fout << std::setw(10) << time << std::setw(13) << prop[0] << std::setw(15) << prop[1] << std::setw(20) << conv << std::endl;
-	fout.close();
 }
 
 void wrapper_input(unsigned int *nx, unsigned int *ny, double *rho, double *u, double *nu, const double *tau, const double *mi_ar){
