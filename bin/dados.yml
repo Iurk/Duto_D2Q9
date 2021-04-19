@@ -4,9 +4,9 @@ domain:
 
 simulation:
   lattice: D2Q9
-  NSTEPS: 10000
+  NSTEPS: 100000
   NSAVE: 1000
-  NMSG: 100
+  NMSG: 1000
   meshprint: false
   erro_max: 1e-13
 
@@ -17,6 +17,10 @@ input:
   Re: 100
   u_max: 0.04
   rho0: 1.0
+
+output:
+  plot_module: true
+  plot_profiles: false
 
 air:
   rho: 1.21
