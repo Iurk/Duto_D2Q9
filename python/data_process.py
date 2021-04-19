@@ -9,49 +9,18 @@ import re
 import yaml
 import numpy as np
 from os import walk
-import utilidades as util
+from time import time
 import multiprocessing as mp
 import funcoes_graficos as fg
-from time import time
+from functools import partial
+from utilidades import criar_pasta
 
-def plotting_image(args):
-    idx_file, rho, ux, uy = args
-    u_mod = np.sqrt(ux**2 + uy**2)
+def getting_files():
     
-    fg.image(u_mod, idx_file, pasta_img)
-    
-def plotting_perfil(args):
-    idx_file, ux, y = args
-    
-    fg.grafico(ux[:, Point], y, idx_file, pasta_perfil)
-    
-if __name__ == '__main__':
-
-    ini = time()
-    main = "./bin"
-    fileyaml = "./bin/dados.yml"
-    velocity = "Velocity"
-    
-    datafile = open(fileyaml)
-    data = yaml.load(datafile, Loader=yaml.FullLoader)
-    datafile.close()
-    
-    Nx = data['domain']['Nx']
-    Ny = data['domain']['Ny']
-    Point = int(Nx/2)
-    
-    Steps = data['simulation']['NSTEPS']
-    Saves = data['simulation']['NSAVE']
-    digitos = len(str(Steps))
-    
-    results = "./bin/Results/"
-    pasta_img = util.criar_pasta('Images', folder=velocity, main_root=main)
-    pasta_perfil = util.criar_pasta('Perfil', folder=velocity, main_root=main)
-    
-    rho_files = []
-    ux_files = []
-    uy_files = []
-    dic = {"rho": rho_files, "ux":ux_files, "uy":uy_files}
+    rho = []
+    ux = []
+    uy = []
+    dic = {"rho": rho, "ux":ux, "uy":uy}
     
     for var in dic.keys():
         path = results + var
@@ -61,21 +30,37 @@ if __name__ == '__main__':
                 path_full = path + "/%s" % file
                 dic[var].append(path_full)
                 
-    # x = np.arange(1, Nx+1, 1)
+    return rho, ux, uy
 
+def getting_perfil_folders(Points, directory):
+    folders = []
+    for i in Points:
+        name = 'Nx = {}'.format(i)
+        folders.append(criar_pasta(name, main_root=directory))
+    return folders
+
+def plotting_module(module_vel, args):
+    idx_file, ux, uy = args
+    u_mod = np.sqrt(ux**2 + uy**2)
+    fg.image(u_mod, idx_file, module_vel)
+    
+def plotting_perfil(Point, pasta_perfil, args):
+    idx_file, x, y = args
+    fg.grafico(x[:, Point], y, idx_file, pasta_perfil)
+    
+def reading_plotting(func, mode, point=None, folder=None):
     CPU = mp.cpu_count()
-    pool = mp.Pool()
     
     idx = []
     ys = np.empty((CPU, Ny))
     rhos = np.empty((CPU, Ny, Nx))
     uxs = np.empty_like(rhos)
     uys = np.empty_like(rhos)
-    
-    i = 0
+
+    pool = mp.Pool()
     pattern = r'\d{%d}' % len(str(Steps))
     
-    print("Reading and plotting data...")
+    i = 0
     while(i < len(rho_files)):
         for j in range(CPU):
             idx.append(re.search(pattern, rho_files[i]).group(0))
@@ -88,16 +73,89 @@ if __name__ == '__main__':
             if(i == len(rho_files)):
                 break
         
-        image_inputs = zip(idx, rhos, uxs, uys)
-        perfil_inputs = zip(idx, uxs, ys)
+        if mode == 'Velocity Module':
+            inputs = zip(idx, uxs, uys)
+        elif mode == 'Velocity Perfil':
+            inputs = zip(idx, uxs, ys)
+        elif mode == 'Rho Perfil':
+            inputs = zip(idx, rhos, ys)
         
-        pool.map(plotting_image, image_inputs)
-        pool.map(plotting_perfil, perfil_inputs)
+        if(point == None):
+            func_partial = partial(func, module_vel)
+        else:
+            func_partial = partial(func, point, folder)
+            
+        pool.map(func_partial, inputs)
         idx = []
+    
+if __name__ == '__main__':
+
+    ini = time()
+    main = "./bin"
+    results = "./bin/Results/"
+    fileyaml = "./bin/dados.yml"
+    velocity = "Velocity"
+    pressure = "Pressure"
+    
+    with open(fileyaml, 'r') as file:
+        data = yaml.load(file, Loader=yaml.FullLoader)
+    
+    Nx = data['domain']['Nx']
+    Ny = data['domain']['Ny']
+    Steps = data['simulation']['NSTEPS']
+    Saves = data['simulation']['NSAVE']
+    plot_module = data['output']['plot_module']
+    plot_profile = data['output']['plot_profiles']
+    digitos = len(str(Steps))
+    
+    pressure = criar_pasta(pressure, main_root=main)
+    velocity = criar_pasta(velocity, main_root=main)
+    module_vel = criar_pasta('Module', main_root=velocity)
+    perfil_vel = criar_pasta('Perfil', main_root=velocity)
+    perfil_rho = criar_pasta('Perfil', main_root=pressure)
+    
+    Points_rho = [0, int(Nx-1)]
+    Points_vel = [0, 15, 30, 45, 60, int((Nx-1)/4), int((Nx-1)/2), int(3*(Nx-1)/4), int(Nx-1)]
+    
+    rho_files, ux_files, uy_files = getting_files()
+    
+    if plot_module:
+        Rho_Points_folder = getting_perfil_folders(Points_rho, perfil_rho)
+        Velocity_Points_folders = getting_perfil_folders(Points_vel, perfil_vel)
+    
+        print('Poltting Velocity Module...')
+        reading_plotting(plotting_module, 'Velocity Module')
         
+    elif plot_profile:
+        print('Plotting Rho values at inlet and outlet...')
+        for i in range(len(Points_rho)):
+            Point = Points_rho[i]
+            pasta_perfil = Rho_Points_folder[i]
+            
+            reading_plotting(plotting_perfil, 'Rho Perfil', point=Point, folder=pasta_perfil)
+    
+        print('Plotting Velocity Perfil at specified points...')
+        for i in range(len(Points_vel)):
+            Point = Points_vel[i]
+            pasta_perfil = Velocity_Points_folders[i]
+            
+            reading_plotting(plotting_perfil, 'Velocity Perfil', point=Point, folder=pasta_perfil)
+    
+    
     print('Animating...')
-    fg.animation('Velocidade', main, pasta_img)
-    fg.animation('Perfil', main, pasta_perfil)
+    if plot_module:
+        name = 'Velocity_Module'
+        fg.animation(name, main, module_vel)
+        
+    elif plot_profile:
+        for folder in Rho_Points_folder:
+            name = 'Rho_perfil_{}'.format(folder.split('/')[-1])
+            fg.animation(name, main, folder)
+            
+        for folder in Velocity_Points_folders:
+            name = 'Velocity_perfil_{}'.format(folder.split('/')[-1])
+            fg.animation(name, main, folder)
+        
     print('Done!')
     fim = time()
     print("Finish in {} s".format(fim - ini))
