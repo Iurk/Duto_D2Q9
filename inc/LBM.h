@@ -3,6 +3,11 @@
 #include <iostream>
 #include <vector>
 
+extern __constant__ unsigned int q, Nx_d, Ny_d;
+extern __constant__ double u_max_d;
+
+extern __device__ bool *solid_d;
+
 void initialization(double*, double);
 void init_equilibrium(double*, double*, double*, double*);
 void stream_collide_save(double*, double*, double*, double*, double*, double*, double*, double*, bool);

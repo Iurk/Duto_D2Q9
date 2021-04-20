@@ -114,21 +114,6 @@ __device__ void poiseulle_eval(unsigned int t, unsigned int x, unsigned int y, d
 	*u = ux;
 }
 
-// Boundary Conditions
-__device__ void gpu_bounce_back(unsigned int x, unsigned int y, double *f){
-	
-	if(y == 0){
-		f[gpu_fieldn_index(x, y, 2)] = f[gpu_fieldn_index(x, y, 4)];
-		f[gpu_fieldn_index(x, y, 5)] = f[gpu_fieldn_index(x, y, 7)];
-		f[gpu_fieldn_index(x, y, 6)] = f[gpu_fieldn_index(x, y, 8)];
-	}
-
-	if(y == Ny_d-1){
-		f[gpu_fieldn_index(x, y, 4)] = f[gpu_fieldn_index(x, y, 2)];
-		f[gpu_fieldn_index(x, y, 7)] = f[gpu_fieldn_index(x, y, 5)];
-		f[gpu_fieldn_index(x, y, 8)] = f[gpu_fieldn_index(x, y, 6)];
-	}
-}
 __host__ void init_equilibrium(double *f1, double *r, double *u, double *v){
 
 	dim3 grid(Nx/nThreads, Ny, 1);
@@ -214,14 +199,7 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 
 	// Collision step
 	for(int n = 0; n < q; ++n){
-		f2[gpu_fieldn_index(x, y, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
-	}
-	
-
-	bool node_solid = solid_d[gpu_scalar_index(x, y)];
-	// Applying Boundary Conditions
-	if(node_solid){
-		gpu_bounce_back(x, y, f2);
+		f2[gpu_fieldn_index(x, y, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)];
 	}
 }
 

@@ -6,6 +6,7 @@
 #include "LBM.h"
 #include "dados.h"
 #include "saving.h"
+#include "boundary.h"
 
 using namespace myGlobals;
 
@@ -143,6 +144,9 @@ int main(int argc, char const *argv[]){
 		}
 */
 		stream_collide_save(f1_gpu, f2_gpu, feq_gpu, fneq_gpu, S_gpu, rho_gpu, ux_gpu, uy_gpu, need_scalars);
+		bounce_back(f2_gpu);
+		inlet_BC(f2_gpu, rho_gpu, ux_gpu, uy_gpu);
+		outlet_BC(f2_gpu);
 
 		if(save){
 			save_scalar("rho",rho_gpu, scalar_host, n+1);
@@ -157,7 +161,7 @@ int main(int argc, char const *argv[]){
 		conv_error = report_convergence(n+1, ux_gpu, ux_old_gpu, conv_host, conv_gpu, msg);
 
 		end_step = n+1;
-		if(conv_error < erro_max){
+		if(conv_error < erro_max && conv_error != 0){
 			break;
 		}
 
