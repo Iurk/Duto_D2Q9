@@ -1,6 +1,6 @@
 domain:
   Nx: 512
-  Ny: 256
+  Ny: 128
 
 simulation:
   lattice: D2Q9
@@ -8,7 +8,7 @@ simulation:
   NSAVE: 1000
   NMSG: 1000
   meshprint: false
-  erro_max: 1e-13
+  erro_max: 1e-16
 
 gpu:
   nThreads: 32
