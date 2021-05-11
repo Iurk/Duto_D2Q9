@@ -1,5 +1,5 @@
 domain:
-  Nx: 512
+  Nx: 1024
   Ny: 256
 
 simulation:
@@ -15,7 +15,7 @@ gpu:
 
 input:
   Re: 100
-  u_max: 0.04
+  u_max: 0.06
   rho0: 1.0
 
 output:
