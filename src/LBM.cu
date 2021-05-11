@@ -105,13 +105,16 @@ __device__ void gpu_source(unsigned int x, unsigned int y, double gx, double gy,
 }
 
 // Poiseulle Flow
-__device__ void poiseulle_eval(unsigned int t, unsigned int x, unsigned int y, double *u){
+__device__ double poiseulle_eval(unsigned int t, unsigned int x, unsigned int y){
 
-	double gradP = 8*u_max_d*mi_ar_d/(Ny_d*Ny_d - 2*Ny_d);
+	double y_double = (double) y;
+	double Ny_double = (double) Ny_d;
 
-	double ux = (1/(2*mi_ar_d))*(gradP)*((Ny_d - 1)*y - y*y);
+	double gradP = (-1)*8*u_max_d*mi_ar_d/(Ny_double*Ny_double - 2*Ny_double);
 
-	*u = ux;
+	double ux = (1.0/(2.0*mi_ar_d))*(gradP)*(y_double*y_double - (Ny_double - 1)*y_double);
+
+	return ux;
 }
 
 // Boundary Conditions
@@ -214,6 +217,7 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 
 	// Collision step
 	for(int n = 0; n < q; ++n){
+		//f2[gpu_fieldn_index(x, y, n)] = omega*feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*f1[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
 		f2[gpu_fieldn_index(x, y, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
 	}
 	
@@ -331,6 +335,7 @@ __host__ std::vector<double> compute_flow_properties(unsigned int t, double *r, 
 		sumuxa2  += prop_host[3*i+2];
 	}
 
+	printf("sumuxe: %g sumuxa: %g\n", sumuxe2, sumuxa2);
 	prop.push_back(E);
 	prop.push_back(sqrt(sumuxe2/sumuxa2));
 
@@ -355,10 +360,9 @@ __global__ void gpu_compute_flow_properties(unsigned int t, double *r, double *u
 	E[threadIdx.x] = rho*(ux*ux + uy*uy);
 
 	// compute analytical results
-    double uxa;
-    poiseulle_eval(t, x, y, &uxa);
+    double uxa = poiseulle_eval(t, x, y);
 
-     // compute terms for L2 error
+    // compute terms for L2 error
     uxe2[threadIdx.x]  = (ux - uxa)*(ux - uxa);
     uxa2[threadIdx.x]  = uxa*uxa;
 
