@@ -155,7 +155,7 @@ int main(int argc, char const *argv[]){
 		f2_gpu = temp;
 
 		conv_error = report_convergence(n+1, ux_gpu, ux_old_gpu, conv_host, conv_gpu, msg);
-
+		
 		end_step = n+1;
 		if(conv_error < erro_max){
 			break;
