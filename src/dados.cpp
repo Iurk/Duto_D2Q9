@@ -14,6 +14,7 @@ const YAML::Node& domain = config["domain"];
 const YAML::Node& simulation = config["simulation"];
 const YAML::Node& gpu = config["gpu"];
 const YAML::Node& input = config["input"];
+const YAML::Node& boundary = config["boundary"];
 const YAML::Node& air = config["air"];
 
 std::string Lattice = simulation["lattice"].as<std::string>();
@@ -22,8 +23,10 @@ const YAML::Node& lattice = config_lattice[Lattice];
 namespace myGlobals{
 
 	//Domain
-	unsigned int Nx = domain["Nx"].as<int>();
-	unsigned int Ny = domain["Ny"].as<int>();
+	double H = domain["H"].as<double>();
+	double D = domain["D"].as<double>();
+	unsigned int Nx = domain["Nx"].as<unsigned int>();
+	unsigned int Ny = domain["Ny"].as<unsigned int>();
 
 	//Simulation
 	unsigned int NSTEPS = simulation["NSTEPS"].as<int>();
@@ -36,9 +39,18 @@ namespace myGlobals{
 	unsigned int nThreads = gpu["nThreads"].as<unsigned int>();
 
 	//Input
-	double u_max = input["u_max"].as<double>();
+	double u_max_si = input["u_max_si"].as<double>();
 	double rho0 = input["rho0"].as<double>();
 	double Re = input["Re"].as<double>();
+
+	//Boundary
+	bool periodic = boundary["periodic"].as<bool>();
+	double gx = boundary["gx"].as<double>();
+	double gy = boundary["gy"].as<double>();
+	std::string inlet_bc = boundary["inlet"].as<std::string>();
+	std::string outlet_bc = boundary["outlet"].as<std::string>();
+	double rhoin = boundary["rhoin"].as<double>();
+	double rhoout = boundary["rhoout"].as<double>();
 
 	//Air
 	const double mi_ar = air["mi"].as<double>();
@@ -49,24 +61,35 @@ namespace myGlobals{
 	std::vector<int> ey_vec = lattice["ey"].as<std::vector<int>>();
 	std::string cs_str = lattice["cs"].as<std::string>();
 	std::string w0_str = lattice["w0"].as<std::string>();
+	std::string wp_str = lattice["wp"].as<std::string>();
 	std::string ws_str = lattice["ws"].as<std::string>();
-	std::string wd_str = lattice["wd"].as<std::string>();
 
 	int *ex = ex_vec.data();
 	int *ey = ey_vec.data();
 	double cs = equation_parser(cs_str);
 	double w0 = equation_parser(w0_str);
+	double wp = equation_parser(wp_str);
 	double ws = equation_parser(ws_str);
-	double wd = equation_parser(wd_str);
 
 	//Memory Sizes
 	const size_t mem_mesh = sizeof(bool)*Nx*Ny;
 	const size_t mem_size_ndir = sizeof(double)*Nx*Ny*ndir;
 	const size_t mem_size_scalar = sizeof(double)*Nx*Ny;
 
-	// Nu and Tau
-	double nu = (u_max*Nx)/Re;
-	const double tau = nu/(cs*cs) + 0.5;
+	// Deltas
+	double delx = H/(Nx-1);
+	double dely = D/(Ny-1);
+	double delt = delx/16;
 
-	bool *solid = read_bin(solid_mesh);
+	// Nu and Tau and Conversions
+	double nu_si = (u_max_si*D)/Re;
+
+	double u_max = u_max_si*delt/delx;
+	double nu = nu_si*delt/(delx*delx);
+	
+	const double tau = nu*(cs*cs) + 0.5;
+
+	bool *walls = read_bin(walls_mesh);
+	bool *inlet = read_bin(inlet_mesh);
+	bool *outlet = read_bin(outlet_mesh);
 }
