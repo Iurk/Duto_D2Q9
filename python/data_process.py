@@ -115,7 +115,7 @@ if __name__ == '__main__':
     perfil_rho = criar_pasta('Perfil', main_root=pressure)
     
     Points_rho = [0, int(Nx-1)]
-    Points_vel = [0, 15, 30, 45, 60, int((Nx-1)/4), int((Nx-1)/2), int(3*(Nx-1)/4), int(Nx-1)]
+    Points_vel = [0, int((Nx-1)/4), int((Nx-1)/2), int(3*(Nx-1)/4), int(Nx-1)]
     
     rho_files, ux_files, uy_files = getting_files()
     
@@ -126,7 +126,7 @@ if __name__ == '__main__':
         print('Poltting Velocity Module...')
         reading_plotting(plotting_module, 'Velocity Module')
         
-    elif plot_profile:
+    if plot_profile:
         print('Plotting Rho values at inlet and outlet...')
         for i in range(len(Points_rho)):
             Point = Points_rho[i]
@@ -147,7 +147,7 @@ if __name__ == '__main__':
         name = 'Velocity_Module'
         fg.animation(name, main, module_vel)
         
-    elif plot_profile:
+    if plot_profile:
         for folder in Rho_Points_folder:
             name = 'Rho_perfil_{}'.format(folder.split('/')[-1])
             fg.animation(name, main, folder)
