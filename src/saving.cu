@@ -68,7 +68,11 @@ __host__ void save_terminal(int time, double conv, std::vector<double> prop){
 	std::ofstream fout;
 	fout.open(filename.str());
 
-	fout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(15) << "L2" << std::setw(23) << "Convergence" << std::endl;
-	fout << std::setw(10) << time << std::setw(13) << prop[0] << std::setw(15) << prop[1] << std::setw(20) << conv << std::endl;
+	fout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(18) << "Convergence" << std::endl;
+	fout << std::setw(10) << time << std::setw(13) << prop[0] << std::setw(15) << conv << std::endl;
+	fout << std::endl;
+	fout << "Norms" << std::endl;
+	fout << std::setw(10) << "P1" << std::setw(15) << "L2" << std::setw(15) << "Pinf" << std::endl;
+	fout << std::setw(10) << prop[1] << std::setw(15) << prop[2] << std::setw(15) << prop[3];
 	fout.close();
 }
