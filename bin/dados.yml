@@ -1,26 +1,37 @@
 domain:
+  H: 1.0
+  D: 0.05
   Nx: 1024
   Ny: 256
 
 simulation:
-  lattice: D2Q9
-  NSTEPS: 100000
-  NSAVE: 1000
+  lattice: D2V17
+  NSTEPS: 500000
+  NSAVE: 2000
   NMSG: 1000
   meshprint: false
-  erro_max: 1e-13
+  erro_max: 1e-17
 
 gpu:
   nThreads: 32
 
 input:
-  Re: 100
-  u_max: 0.06
+  Re: 725
+  u_max_si: 1.0
   rho0: 1.0
 
 output:
   plot_module: true
   plot_profiles: false
+
+boundary:
+  periodic: false
+  gx: 1e-3
+  gy: 0.0
+  inlet: VP
+  rhoin: 1.0
+  outlet: FD
+  rhoout: 0.8436
 
 air:
   rho: 1.21
