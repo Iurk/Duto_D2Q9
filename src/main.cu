@@ -82,23 +82,29 @@ int main(int argc, char const *argv[]){
 	checkCudaErrors(cudaEventCreate(&stop));
 
 	// Allocation of Input data in Device constant memory
-	wrapper_input(&Nx, &Ny, &rho0, &u_max, &nu, &tau, &mi_ar);
+	wrapper_input(&Nx, &Ny, &rho0, &u_max, &nu, &mi_ar);
+	wrapper_analytical(&D, &delx, &dely, &delt, &u_max_si);
+	wrapper_LBM(&gx, &gy, &tau);
 
 	// Allocation of Lattice data in Device constant and global memory
-	wrapper_lattice(&ndir, &cs, &w0, &ws, &wd);
+	wrapper_lattice(&ndir, &cs, &w0, &wp, &ws); 
 
 	int *ex_gpu, *ey_gpu;
 
 	ex_gpu = generate_e(ex, "x");
 	ey_gpu = generate_e(ey, "y");
 
-	bool *solid_p;
-	bool *solid_gpu;
+	bool *walls_p, *inlet_p, *outlet_p;
+	bool *walls_gpu, *inlet_gpu, *outlet_gpu;
 
-	solid_p = create_pinned_mesh(solid);
+	walls_p = create_pinned_mesh(walls);
+	inlet_p = create_pinned_mesh(inlet);
+	outlet_p = create_pinned_mesh(outlet);
 
 	// Generating Mesh
-	solid_gpu = generate_mesh(solid_p, "solid");
+	walls_gpu = generate_mesh(walls_p, "walls");
+	inlet_gpu = generate_mesh(inlet_p, "inlet");
+	outlet_gpu = generate_mesh(outlet_p, "outlet");
 
 	// Initialization
 	initialization(rho_gpu, rho0);
@@ -221,8 +227,12 @@ int main(int argc, char const *argv[]){
 	checkCudaErrors(cudaFree(ey_gpu));
 
 	// Mesh arrays
-	checkCudaErrors(cudaFree(solid_gpu));
-	checkCudaErrors(cudaFreeHost(solid_p));
+	checkCudaErrors(cudaFree(walls_gpu));
+	checkCudaErrors(cudaFreeHost(walls_p));
+	checkCudaErrors(cudaFree(inlet_gpu));
+	checkCudaErrors(cudaFreeHost(inlet_p));
+	checkCudaErrors(cudaFree(outlet_gpu));
+	checkCudaErrors(cudaFreeHost(outlet_p));
 
 	// Host arrays
 	checkCudaErrors(cudaFreeHost(scalar_host));
