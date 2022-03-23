@@ -112,12 +112,9 @@ __device__ void gpu_source(unsigned int x, unsigned int y, double rho, double ux
 // Poiseulle Flow
 __device__ double poiseulle_eval(unsigned int x, unsigned int y){
 
-	double rA = y*dely_d;
-	double R = D_d/2.0;
-	double rl = rA - R;
-
-	double ux_si = umax_d*(1 - (rl/R)*(rl/R));
-	double ux_lattice = ux_si*(delt_d/delx_d);
+	double Nl = y - (Ny_d-1)/2;
+	double div = Nl/((Ny_d-1)/2);
+	double ux_lattice = u_max_d*(1 - div*div);
 
 	return ux_lattice;
 }
@@ -181,12 +178,9 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 
 	double rho = 0, ux_i = 0, uy_i = 0;
 	for(int n = 0; n < q; ++n){
-		x_att = (x - ex_d[n] + Nx_d)%Nx_d;
-		y_att = (y - ey_d[n] + Ny_d)%Ny_d;
-
-		rho += f1[gpu_fieldn_index(x_att, y_att, n)];
-		ux_i += f1[gpu_fieldn_index(x_att, y_att, n)]*ex_d[n];
-		uy_i += f1[gpu_fieldn_index(x_att, y_att, n)]*ey_d[n];
+		rho += f1[gpu_fieldn_index(x, y, n)];
+		ux_i += f1[gpu_fieldn_index(x, y, n)]*ex_d[n];
+		uy_i += f1[gpu_fieldn_index(x, y, n)]*ey_d[n];
 	}
 
 	double ux = (ux_i + 0.5*rho*gx_d)/rho;
@@ -201,9 +195,7 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 	
 	// Approximation of fneq
 	for(int n = 0; n < q; ++n){
-		x_att = (x - ex_d[n] + Nx_d)%Nx_d;
-		y_att = (y - ey_d[n] + Ny_d)%Ny_d;
-		fneq[gpu_fieldn_index(x, y, n)] = f1[gpu_fieldn_index(x_att, y_att, n)] - feq[gpu_fieldn_index(x, y, n)];
+		fneq[gpu_fieldn_index(x, y, n)] = f1[gpu_fieldn_index(x, y, n)] - feq[gpu_fieldn_index(x, y, n)];
 	}
 
 	// Calculating the Viscous stress tensor
@@ -218,9 +210,10 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 
 	// Collision and Stream Step
 	for(int n = 0; n < q; ++n){
-		
-		f2[gpu_fieldn_index(x_att, y_att, n)] = omega*feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*f1[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
-		//f2[gpu_fieldn_index(x_att, y_att, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
+		x_att = (x + ex_d[n] + Nx_d)%Nx_d;
+		y_att = (y + ey_d[n] + Ny_d)%Ny_d;
+		//f2[gpu_fieldn_index(x, y, n)] = omega*feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*f1[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
+		f2[gpu_fieldn_index(x_att, y_att, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
 	}
 	
 
