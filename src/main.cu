@@ -62,7 +62,7 @@ int main(int argc, char const *argv[]){
 	checkCudaErrors(cudaMalloc((void**)&ux_old_gpu, mem_size_scalar));
 
 	const size_t mem_size_conv = 2*1*Ny/nThreads*sizeof(double);
-	const size_t mem_size_props = 3*Nx/nThreads*Ny*sizeof(double);
+	const size_t mem_size_props = 5*Nx/nThreads*Ny*sizeof(double);
 	checkCudaErrors(cudaMalloc((void**)&prop_gpu, mem_size_props));
 	checkCudaErrors(cudaMalloc((void**)&conv_gpu, mem_size_conv));
 
@@ -80,6 +80,10 @@ int main(int argc, char const *argv[]){
 	cudaEvent_t start, stop;
 	checkCudaErrors(cudaEventCreate(&start));
 	checkCudaErrors(cudaEventCreate(&stop));
+
+	if(!periodic){
+		gx = 0.0, gy = 0.0;
+	}
 
 	// Allocation of Input data in Device constant memory
 	wrapper_input(&Nx, &Ny, &rho0, &u_max, &nu, &mi_ar);
