@@ -9,8 +9,8 @@ import yaml
 import numpy as np
 import utilidades as utils
 
-Sim_yaml = "../bin/dados.yml"
-path_mesh = "../bin/Mesh/"
+Sim_yaml = "./bin/dados.yml"
+path_mesh = "./bin/Mesh/"
 with open(Sim_yaml) as file:
     simulation = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -31,7 +31,7 @@ walls = walls.flatten()
 inlet = inlet.flatten()
 outlet = outlet.flatten()
 
-pasta = utils.criar_pasta("Mesh", main_root="../bin")
+pasta = utils.criar_pasta("Mesh", main_root="./bin")
 
 mesh_data = [walls, inlet, outlet]
 mesh_files = ['walls.bin', 'inlet.bin', 'outlet.bin']
