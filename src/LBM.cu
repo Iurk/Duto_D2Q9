@@ -91,7 +91,7 @@ __device__ void gpu_non_equilibrium(unsigned int x, unsigned int y, double tauxx
 	}
 }
 
-__device__ void gpu_source(unsigned int x, unsigned int y, double gx, double gy, double rho, double ux, double uy, double *S){
+__device__ void gpu_source(unsigned int x, unsigned int y, double rho, double ux, double uy, double *S){
 
 	double cs2 = cs_d*cs_d;
 
@@ -99,10 +99,10 @@ __device__ void gpu_source(unsigned int x, unsigned int y, double gx, double gy,
 	double W[] = {w0_d, wp_d, wp_d, wp_d, wp_d, ws_d, ws_d, ws_d, ws_d};
 
 	for(int n = 0; n < q; ++n){
-		double gdotei = gx*ex_d[n] + gy*ey_d[n];
+		double gdotei = gx_d*ex_d[n] + gy_d*ey_d[n];
 		double udotei = ux*ex_d[n] + uy*ey_d[n];
 
-		double order_1 = gx*(ex_d[n] - ux) + gy*(ey_d[n] - uy);
+		double order_1 = gx_d*(ex_d[n] - ux) + gy_d*(ey_d[n] - uy);
 		double order_2 = A*gdotei*udotei;
 
 		S[gpu_fieldn_index(x, y, n)] = A*W[n]*rho*(order_1 + order_2);
@@ -179,9 +179,6 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 
 	unsigned int x_att, y_att;
 
-	const double gx = 1e-6;
-	const double gy = 0.0;
-
 	double rho = 0, ux_i = 0, uy_i = 0;
 	for(int n = 0; n < q; ++n){
 		x_att = (x - ex_d[n] + Nx_d)%Nx_d;
@@ -192,21 +189,20 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 		uy_i += f1[gpu_fieldn_index(x_att, y_att, n)]*ey_d[n];
 	}
 
-	double ux = (ux_i + 0.5*rho*gx)/rho;
-	double uy = (uy_i + 0.5*rho*gy)/rho;
+	double ux = (ux_i + 0.5*rho*gx_d)/rho;
+	double uy = (uy_i + 0.5*rho*gy_d)/rho;
 
 	r[gpu_scalar_index(x, y)] = rho;
 	u[gpu_scalar_index(x, y)] = ux;
 	v[gpu_scalar_index(x, y)] = uy;
 
+	gpu_source(x, y, rho, ux, uy, S);
 	gpu_equilibrium(x, y, rho, ux, uy, feq);
-	gpu_source(x, y, gx, gy, rho, ux, uy, S);
-
+	
 	// Approximation of fneq
 	for(int n = 0; n < q; ++n){
 		x_att = (x - ex_d[n] + Nx_d)%Nx_d;
 		y_att = (y - ey_d[n] + Ny_d)%Ny_d;
-
 		fneq[gpu_fieldn_index(x, y, n)] = f1[gpu_fieldn_index(x_att, y_att, n)] - feq[gpu_fieldn_index(x, y, n)];
 	}
 
@@ -220,10 +216,11 @@ __global__ void gpu_stream_collide_save(double *f1, double *f2, double *feq, dou
 
 	gpu_non_equilibrium(x, y, tauxx, tauxy, tauyy, fneq);
 
-	// Collision step
+	// Collision and Stream Step
 	for(int n = 0; n < q; ++n){
-		//f2[gpu_fieldn_index(x, y, n)] = omega*feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*f1[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
-		f2[gpu_fieldn_index(x, y, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
+		
+		f2[gpu_fieldn_index(x_att, y_att, n)] = omega*feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*f1[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
+		//f2[gpu_fieldn_index(x_att, y_att, n)] = feq[gpu_fieldn_index(x, y, n)] + (1 - omega)*fneq[gpu_fieldn_index(x, y, n)] + (1 - 0.5*omega)*S[gpu_fieldn_index(x, y, n)];
 	}
 	
 
