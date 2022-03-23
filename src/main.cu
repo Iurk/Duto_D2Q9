@@ -16,7 +16,7 @@ int main(int argc, char const *argv[]){
 	printf("  Domain size: %ux%u\n", Nx, Ny);
 	printf("           nu: %g\n", nu);
 	printf("          tau: %g\n", tau);
-	printf("        u_max: %g\n", u_max);
+	printf("        u_max: %g\n", u_max_lattice);
 	printf("         rho0: %g\n", rho0);
 	printf("           Re: %g\n", Re);
 	printf("  Times Stpes: %u\n", NSTEPS);
@@ -86,8 +86,7 @@ int main(int argc, char const *argv[]){
 	}
 
 	// Allocation of Input data in Device constant memory
-	wrapper_input(&Nx, &Ny, &rho0, &u_max, &nu, &mi_ar);
-	wrapper_analytical(&D, &delx, &dely, &delt, &u_max_si);
+	wrapper_input(&Nx, &Ny, &rho0, &u_max_lattice, &nu, &mi_ar);
 	wrapper_LBM(&gx, &gy, &tau);
 
 	// Allocation of Lattice data in Device constant and global memory
@@ -112,7 +111,7 @@ int main(int argc, char const *argv[]){
 
 	// Initialization
 	initialization(rho_gpu, rho0);
-	initialization(ux_gpu, u_max);
+	initialization(ux_gpu, u_max_lattice);
 	initialization(uy_gpu, 0.0);
 	initialization(ux_old_gpu, 0.0);
 
