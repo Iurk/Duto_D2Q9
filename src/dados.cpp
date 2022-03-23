@@ -23,8 +23,6 @@ const YAML::Node& lattice = config_lattice[Lattice];
 namespace myGlobals{
 
 	//Domain
-	double H = domain["H"].as<double>();
-	double D = domain["D"].as<double>();
 	unsigned int Nx = domain["Nx"].as<unsigned int>();
 	unsigned int Ny = domain["Ny"].as<unsigned int>();
 
@@ -39,7 +37,7 @@ namespace myGlobals{
 	unsigned int nThreads = gpu["nThreads"].as<unsigned int>();
 
 	//Input
-	double u_max_si = input["u_max_si"].as<double>();
+	double u_max_lattice = input["u_max_lattice"].as<double>();
 	double rho0 = input["rho0"].as<double>();
 	double Re = input["Re"].as<double>();
 
@@ -76,17 +74,7 @@ namespace myGlobals{
 	const size_t mem_size_ndir = sizeof(double)*Nx*Ny*ndir;
 	const size_t mem_size_scalar = sizeof(double)*Nx*Ny;
 
-	// Deltas
-	double delx = H/(Nx-1);
-	double dely = D/(Ny-1);
-	double delt = delx/16;
-
-	// Nu and Tau and Conversions
-	double nu_si = (u_max_si*D)/Re;
-
-	double u_max = u_max_si*delt/delx;
-	double nu = nu_si*delt/(delx*delx);
-	
+	double nu = (u_max_lattice*Ny)/Re;
 	const double tau = nu*(cs*cs) + 0.5;
 
 	bool *walls = read_bin(walls_mesh);

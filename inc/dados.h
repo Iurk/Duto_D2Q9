@@ -6,7 +6,6 @@
 namespace myGlobals{
 
 	//Domain
-	extern double H, D;
 	extern unsigned int Nx, Ny;
 
 	//Simulation
@@ -18,7 +17,7 @@ namespace myGlobals{
 	extern unsigned int nThreads;
 
 	//Input
-	extern double u_max, u_max_si, rho0, Re;
+	extern double u_max_lattice, rho0, Re;
 	extern double nu;
 	extern const double tau;
 
@@ -42,7 +41,7 @@ namespace myGlobals{
 	extern const size_t mem_size_scalar;
 
 	// Deltas
-	extern double delx, dely, delt;
+	//extern double delx, dely, delt;
 
 	extern bool *walls, *inlet, *outlet;
 }

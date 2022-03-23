@@ -1,8 +1,6 @@
 domain:
-  H: 1.0
-  D: 0.05
-  Nx: 512
-  Ny: 128
+  Nx: 1024
+  Ny: 256
 
 simulation:
   lattice: D2Q9
@@ -16,8 +14,8 @@ gpu:
   nThreads: 32
 
 input:
-  Re: 725
-  u_max_si: 1.0
+  Re: 100
+  u_max_lattice: 0.0625
   rho0: 1.0
 
 output:
@@ -26,7 +24,7 @@ output:
 
 boundary:
   periodic: true
-  gx: 1e-6
+  gx: 1e-7
   gy: 0.0
   inlet: VP
   rhoin: 1.0
