@@ -51,7 +51,7 @@ namespace myGlobals{
 	std::string outlet_bc = boundary["outlet"].as<std::string>();
 	double rhoin = boundary["rhoin"].as<double>();
 	double rhoout = boundary["rhoout"].as<double>();
-	
+
 	//Air
 	const double mi_ar = air["mi"].as<double>();
 
@@ -87,12 +87,9 @@ namespace myGlobals{
 	double u_max = u_max_si*delt/delx;
 	double nu = nu_si*delt/(delx*delx);
 	
-	//double nu = 0.1/4;
-	//double u_max = (nu*Re)/Ny;
 	const double tau = nu*(cs*cs) + 0.5;
 
 	bool *walls = read_bin(walls_mesh);
 	bool *inlet = read_bin(inlet_mesh);
 	bool *outlet = read_bin(outlet_mesh);
-
 }
