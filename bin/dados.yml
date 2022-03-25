@@ -23,7 +23,7 @@ output:
   plot_profiles: false
 
 boundary:
-  periodic: true
+  periodic: false
   gx: 1e-7
   gy: 0.0
   inlet: VP
