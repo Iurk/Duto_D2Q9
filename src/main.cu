@@ -6,6 +6,7 @@
 #include "LBM.h"
 #include "dados.h"
 #include "saving.h"
+#include "boundary.h"
 
 using namespace myGlobals;
 
@@ -152,6 +153,11 @@ int main(int argc, char const *argv[]){
 		}
 */
 		stream_collide_save(f1_gpu, f2_gpu, feq_gpu, fneq_gpu, S_gpu, rho_gpu, ux_gpu, uy_gpu, need_scalars);
+		if(!periodic){
+			inlet_BC(rhoin, u_max_lattice, f2_gpu, rho_gpu, ux_gpu, uy_gpu, inlet_bc);
+			outlet_BC(rhoout, u_max_lattice, f2_gpu, rho_gpu, ux_gpu, uy_gpu, outlet_bc);
+		}
+		bounce_back(f2_gpu);
 
 		if(save){
 			save_scalar("rho",rho_gpu, scalar_host, n+1);
@@ -166,15 +172,14 @@ int main(int argc, char const *argv[]){
 		conv_error = report_convergence(n+1, ux_gpu, ux_old_gpu, conv_host, conv_gpu, msg);
 		
 		end_step = n+1;
-		if(conv_error < erro_max){
+		/*if(conv_error < erro_max){
 			break;
-		}
+		}*/
 
 		checkCudaErrors(cudaMemcpy(ux_old_gpu, ux_gpu, mem_size_scalar, cudaMemcpyDeviceToDevice));
 	}
 	
 	bool msg = 0 == 0;
-	std::cout << std::setw(10) << "Timestep" << std::setw(10) << "E" << std::setw(15) << "L2" << std::setw(23) << "Convergence" << std::endl;
 	fluid_prop = report_flow_properties(end_step, conv_error, rho_gpu, ux_gpu, uy_gpu, prop_gpu, scalar_host, msg);
 	save_terminal(end_step, conv_error, fluid_prop);
 
