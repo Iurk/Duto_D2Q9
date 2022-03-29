@@ -112,8 +112,10 @@ __device__ void gpu_source(unsigned int x, unsigned int y, double rho, double ux
 // Poiseulle Flow
 __device__ double poiseulle_eval(unsigned int x, unsigned int y){
 
-	double Nl = y - (Ny_d-1)/2;
-	double div = Nl/((Ny_d-1)/2);
+	double Ny = Ny_d;
+
+	double Nl = y - (Ny-1)/2;
+	double div = Nl/((Ny-1)/2);
 	double ux_lattice = u_max_d*(1 - div*div);
 
 	return ux_lattice;
@@ -376,7 +378,7 @@ __global__ void gpu_compute_flow_properties(unsigned int t, double *r, double *u
 
 	// Compute analytical results
     double uxa = poiseulle_eval(x, y);
-    
+
     // Compute terms for P1 error norm
     uxe1[threadIdx.x]  = abs((ux - uxa));
     uxa1[threadIdx.x]  = uxa;
