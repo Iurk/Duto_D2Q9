@@ -46,9 +46,9 @@ __device__ void device_inlet_VP(unsigned int x, unsigned int y, double u_in, dou
 
 	double rho = (f[idx_0] + f[idx_2] + f[idx_4] + 2*(f[idx_3] + f[idx_6] + f[idx_7]))/(1.0 - ux);
 
-	f[gpu_fieldn_index(x, y, 1)] = f[idx_3] + (2.0/3.0)*rho*ux;
-	f[gpu_fieldn_index(x, y, 5)] = f[idx_7] - 0.5*(f[idx_2] - f[idx_4]) + (1.0/6.0)*rho*ux;
-	f[gpu_fieldn_index(x, y, 8)] = f[idx_6] + 0.5*(f[idx_2] - f[idx_4]) + (1.0/6.0)*rho*ux;
+	f[gpu_fieldn_index(x, y, 1)] = (3*f[idx_3] + ux*(f[idx_3] + 2*(f[idx_0] + f[idx_2] + f[idx_4]) + 4*(f[idx_6] + f[idx_7])))/(3*(1.0 - ux));
+	f[gpu_fieldn_index(x, y, 5)] = (6*f[idx_7] + 3*(f[idx_4] - f[idx_2]) + ux*(f[idx_0] + 2*(f[idx_3] + f[idx_6] - f[idx_4]) + 4*(f[idx_2] - f[idx_7])))/(6*(1.0 - ux));
+	f[gpu_fieldn_index(x, y, 8)] = (6*f[idx_6] + 3*(f[idx_2] - f[idx_4]) + ux*(f[idx_0] + 2*(f[idx_3] + f[idx_7] - f[idx_2]) + 4*(f[idx_4] - f[idx_6])))/(6*(1.0 - ux));
 
 	r[gpu_scalar_index(x, y)] = rho;
 	u[gpu_scalar_index(x, y)] = ux;
@@ -59,6 +59,23 @@ __device__ void device_inlet_PP(unsigned int x, unsigned int y, double rho_in, d
 
 	double rho = rho_in;
 	double uy = 0.0;
+
+	unsigned int idx_0 = gpu_fieldn_index(x, y, 0);
+	unsigned int idx_2 = gpu_fieldn_index(x, y, 2);
+	unsigned int idx_3 = gpu_fieldn_index(x, y, 3);
+	unsigned int idx_4 = gpu_fieldn_index(x, y, 4);
+	unsigned int idx_6 = gpu_fieldn_index(x, y, 6);
+	unsigned int idx_7 = gpu_fieldn_index(x, y, 7);
+
+	double ux = (rho - f[idx_0] - f[idx_2] - f[idx_4] - 2*(f[idx_3] + f[idx_6] + f[idx_7]))/(rho);
+
+	f[gpu_fieldn_index(x, y, 1)] = (2*rho - f[idx_3] - 2*(f[idx_0] + f[idx_2] + f[idx_4]) - 4*(f[idx_6] + f[idx_7]))/(3);
+	f[gpu_fieldn_index(x, y, 5)] = (rho - f[idx_0] + 2*(f[idx_4] - f[idx_3] - f[idx_6]) + 4*(f[idx_7] - f[idx_2]))/(6);
+	f[gpu_fieldn_index(x, y, 8)] = (rho - f[idx_0] + 2*(f[idx_2] - f[idx_3] - f[idx_7]) + 4*(f[idx_6] - f[idx_4]))/(6);
+
+	r[gpu_scalar_index(x, y)] = rho;
+	u[gpu_scalar_index(x, y)] = ux;
+	v[gpu_scalar_index(x, y)] = uy;
 }
 
 __device__ void device_outlet_FD(unsigned int x, unsigned int y, double *f){
@@ -84,12 +101,46 @@ __device__ void device_outlet_VP(unsigned int x, unsigned int y, double u_out, d
 	
 	double ux = u_out;
 	double uy = 0.0;
+
+	unsigned int idx_0 = gpu_fieldn_index(x, y, 0);
+	unsigned int idx_1 = gpu_fieldn_index(x, y, 1);
+	unsigned int idx_2 = gpu_fieldn_index(x, y, 2);
+	unsigned int idx_4 = gpu_fieldn_index(x, y, 4);
+	unsigned int idx_5 = gpu_fieldn_index(x, y, 5);
+	unsigned int idx_8 = gpu_fieldn_index(x, y, 8);
+
+	double rho = (f[idx_0] + f[idx_2] + f[idx_4] + 2*(f[idx_1] + f[idx_5] + f[idx_8]))/(1.0 + ux);
+
+	f[gpu_fieldn_index(x, y, 3)] = (3*f[idx_1] + ux*(-f[idx_1] - 2*(f[idx_0] + f[idx_2] + f[idx_4]) - 4*(f[idx_5] + f[idx_8])))/(3*(1.0 + ux));
+	f[gpu_fieldn_index(x, y, 6)] = (6*f[idx_8] + 3*(f[idx_4] - f[idx_2]) + ux*(-f[idx_0] - 2*(f[idx_1] - f[idx_4] + f[idx_5]) - 4*(f[idx_2] - f[idx_8])))/(6*(1.0 + ux));
+	f[gpu_fieldn_index(x, y, 7)] = (6*f[idx_5] + 3*(f[idx_2] - f[idx_4]) + ux*(-f[idx_0] - 2*(f[idx_1] - f[idx_2] + f[idx_8]) - 4*(f[idx_4] - f[idx_5])))/(6*(1.0 + ux));
+
+	r[gpu_scalar_index(x, y)] = rho;
+	u[gpu_scalar_index(x, y)] = ux;
+	v[gpu_scalar_index(x, y)] = uy;
 }
 
 __device__ void device_outlet_PP(unsigned int x, unsigned int y, double rho_out, double *f, double *r, double *u, double *v){
 	
 	double rho = rho_out;
 	double uy = 0.0;
+
+	unsigned int idx_0 = gpu_fieldn_index(x, y, 0);
+	unsigned int idx_1 = gpu_fieldn_index(x, y, 1);
+	unsigned int idx_2 = gpu_fieldn_index(x, y, 2);
+	unsigned int idx_4 = gpu_fieldn_index(x, y, 4);
+	unsigned int idx_5 = gpu_fieldn_index(x, y, 5);
+	unsigned int idx_8 = gpu_fieldn_index(x, y, 8);
+
+	double ux = (f[idx_0] + f[idx_2] + f[idx_4] + 2*(f[idx_1] + f[idx_5] + f[idx_8]) - rho)/(rho);
+
+	f[gpu_fieldn_index(x, y, 3)] = (2*rho - f[idx_1] - 2*(f[idx_0] + f[idx_2] + f[idx_4]) - 4*(f[idx_5] + f[idx_8]))/(3);
+	f[gpu_fieldn_index(x, y, 6)] = (rho - f[idx_0] - 2*(f[idx_1] - f[idx_4] + f[idx_5]) - 4*(f[idx_2] - f[idx_8]))/(6);
+	f[gpu_fieldn_index(x, y, 7)] = (rho - f[idx_0] - 2*(f[idx_1] - f[idx_2] + f[idx_8]) - 4*(f[idx_4] - f[idx_5]))/(6);
+
+	r[gpu_scalar_index(x, y)] = rho;
+	u[gpu_scalar_index(x, y)] = ux;
+	v[gpu_scalar_index(x, y)] = uy;
 }
 
 __host__ void bounce_back(double *f){
@@ -125,7 +176,7 @@ __host__ void inlet_BC(double rho_in, double ux_in, double *f, double *r, double
 		mode_num = 2;
 	}
 
-	gpu_inlet<<< grid, block >>>(rho_in, ux_in, f, r, u, v, mode_num)
+	gpu_inlet<<< grid, block >>>(rho_in, ux_in, f, r, u, v, mode_num);
 	getLastCudaError("gpu_inlet kernel error");
 }
 
