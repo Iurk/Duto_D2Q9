@@ -4,8 +4,8 @@ domain:
 
 simulation:
   lattice: D2Q9
-  NSTEPS: 100000
-  NSAVE: 1000
+  NSTEPS: 50000
+  NSAVE: 2000
   NMSG: 1000
   meshprint: false
   erro_max: 1e-17
@@ -14,8 +14,8 @@ gpu:
   nThreads: 32
 
 input:
-  Re: 100
-  u_max_lattice: 0.0625
+  Re: 125
+  u_max_lattice: 0.04
   rho0: 1.0
 
 output:
@@ -26,10 +26,10 @@ boundary:
   periodic: false
   gx: 1e-7
   gy: 0.0
-  inlet: VP
+  inlet: PP
   rhoin: 1.0
-  outlet: FD
-  rhoout: 0.8436
+  outlet: PP
+  rhoout: 1.0
 
 air:
   rho: 1.21
